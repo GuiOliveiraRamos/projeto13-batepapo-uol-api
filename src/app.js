@@ -6,6 +6,7 @@ app.use(cors());
 app.use(express.json());
 
 const participants = [];
+const messages = [];
 
 app.post("/participants", (req, res) => {
   const { name } = req.body;
@@ -41,5 +42,15 @@ app.post("/messages", (req, res) => {
   res.sendStatus(201);
 });
 
+app.get("/messages", (req, res) => {
+  const user = req.headers.user;
+  const limit = parseInt(req.query.limit);
+  if (!limit) {
+    res.send(messages);
+  }
+  if (limit) {
+    res.send(messages.slice(-limit));
+  }
+});
 const PORT = 5000;
 app.listen(PORT, `Servidor rodando na porta ${PORT}`);

@@ -45,6 +45,9 @@ app.post("/messages", (req, res) => {
 app.get("/messages", (req, res) => {
   const user = req.headers.user;
   const limit = parseInt(req.query.limit);
+  if (isNaN(limit) || limit < 0) {
+    return res.sendStatus(422);
+  }
   if (!limit) {
     res.send(messages);
   }

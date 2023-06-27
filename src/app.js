@@ -19,5 +19,11 @@ app.post("/participants", (req, res) => {
   res.sendStatus(201);
 });
 
+app.get("/participants", (req, res) => {
+  if (participants.length === 0) {
+    res.send([]);
+  }
+});
+
 const PORT = 5000;
 app.listen(PORT, `Servidor rodando na porta ${PORT}`);

@@ -25,5 +25,21 @@ app.get("/participants", (req, res) => {
   }
 });
 
+app.post("/messages", (req, res) => {
+  const from = req.headers.from;
+  const { to, text, type } = req.body;
+
+  if (!to && !text) {
+    return res.sendStatus(422);
+  }
+  if (type !== message || type !== private_message) {
+    return res.sendStatus(422);
+  }
+  if (!from.includes(participants)) {
+    res.sendStatus(422);
+  }
+  res.sendStatus(201);
+});
+
 const PORT = 5000;
 app.listen(PORT, `Servidor rodando na porta ${PORT}`);

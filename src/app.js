@@ -10,7 +10,7 @@ const messages = [];
 
 app.post("/participants", (req, res) => {
   const { name } = req.body;
-  if (!name) {
+  if (!name || typeof name !== "string" || name.length === 0) {
     return res.sendStatus(422);
   }
   if (participants.includes(name)) {
@@ -30,14 +30,17 @@ app.post("/messages", (req, res) => {
   const from = req.headers.from;
   const { to, text, type } = req.body;
 
-  if (!to && !text) {
+  if (!to || typeof to === "string" || to.length === 0) {
+    return res.sendStatus(422);
+  }
+  if (!text || typeof text === "string" || text.length === 0) {
     return res.sendStatus(422);
   }
   if (type !== message || type !== private_message) {
     return res.sendStatus(422);
   }
   if (!from.includes(participants)) {
-    res.sendStatus(422);
+    return res.sendStatus(422);
   }
   res.sendStatus(201);
 });

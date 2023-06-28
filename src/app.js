@@ -3,6 +3,7 @@ import cors from "cors";
 import { MongoClient } from "mongodb";
 import dotenv from "dotenv";
 import dayjs from "dayjs";
+import Joi from "joi";
 
 const app = express();
 app.use(cors());
@@ -21,21 +22,38 @@ mongoClient
   })
   .catch((err) => console.log(err.message));
 
-app.post("/participants", (req, res) => {
+app.post("/participants", async (req, res) => {
   const { name } = req.body;
-  if (!name || typeof name !== "string" || name.length === 0) {
+  const { error } = Joi.object({
+    name: Joi.string().required().min(1),
+  }).validate(req.body);
+
+  if (error) {
     return res.sendStatus(422);
   }
-  // if (participants.includes(name)) {
-  //    return res.sendStatus(409);
-  // }
+
+  const participants = await db.collection("participants").findOne({ name });
+
+  if (participants) {
+    return res.sendStatus(409);
+  }
   const newParticipant = { name, lastStatus: Date.now() };
 
   const promise = db.collection("participants").insertOne(newParticipant);
 
-  promise.then(() =>
-    res.status(201).send("Participante cadastrado com sucesso!")
-  );
+  promise.then(() => {
+    const loginMessage = {
+      from: name,
+      to: "Todos",
+      text: "entra na sala...",
+      type: "status",
+      time: dayjs().format("HH:mm:ss"),
+    };
+
+    db.collection("messages").insertOne(loginMessage);
+
+    res.sendStatus(201);
+  });
 });
 
 app.get("/participants", (req, res) => {
@@ -44,23 +62,30 @@ app.get("/participants", (req, res) => {
   promise.catch((err) => res.status(500).send(err.message));
 });
 
-app.post("/messages", (req, res) => {
-  //  const from = req.headers.from;
+app.post("/messages", async (req, res) => {
   const { to, text, type } = req.body;
 
-  // if (!to || typeof to === "string" || to.length === 0) {
-  //  return res.sendStatus(422);
-  //}
-  //if (!text || typeof text === "string" || text.length === 0) {
-  //  return res.sendStatus(422);
-  //}
-  //if (type !== message || type !== private_message) {
-  //  return res.sendStatus(422);
-  // }
-  //  if (!from.includes(participants)) {
-  //    return res.sendStatus(422);
-  //  }
-  const newMessage = { to, text, type, time: dayjs().format("HH:mm:ss") };
+  const from = req.headers.user;
+
+  const { error } = Joi.object({
+    to: Joi.string().required().min(1),
+    text: Joi.string().required().min(1),
+    type: Joi.string().valid("message", "private_message").required(),
+  }).validate({ to, text, type });
+
+  if (error) {
+    return res.status(422).send("erro ao enviar mensagem");
+  }
+
+  const participants = await db
+    .collection("participants")
+    .findOne({ name: from });
+
+  if (!participants) {
+    return res.status(422).send("participante nao cadastrado");
+  }
+
+  const newMessage = { from, to, text, type, time: dayjs().format("HH:mm:ss") };
   const promise = db.collection("messages").insertOne(newMessage);
 
   promise.then(() => res.status(201).send("Mensagem enviada!"));

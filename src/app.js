@@ -65,7 +65,7 @@ app.get("/participants", (req, res) => {
 app.post("/messages", async (req, res) => {
   const { to, text, type } = req.body;
 
-  const from = req.headers.User;
+  const from = req.headers.user;
 
   const { error } = Joi.object({
     to: Joi.string().required().min(1),
@@ -75,6 +75,14 @@ app.post("/messages", async (req, res) => {
 
   if (error) {
     return res.status(422).send("erro ao enviar mensagem");
+  }
+
+  const participant = await db
+    .collection("participants")
+    .findOne({ name: from });
+
+  if (!participant) {
+    return res.status(422).send("Não está cadastrado");
   }
 
   const newMessage = { from, to, text, type, time: dayjs().format("HH:mm:ss") };

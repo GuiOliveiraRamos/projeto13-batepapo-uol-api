@@ -92,21 +92,33 @@ app.post("/messages", async (req, res) => {
   promise.catch((err) => res.status(422).send(err.message));
 });
 
-app.get("/messages", (req, res) => {
-  //  const user = req.headers.user;
-  //const limit = parseInt(req.query.limit);
-  //if (isNaN(limit) || limit < 0) {
-  //  return res.sendStatus(422);
-  //}
-  //  if (!limit) {
-  //    res.send(messages);
-  //  }
-  //  if (limit) {
-  //    res.send(messages.slice(-limit));
-  //  }
-  const promise = db.collection("messages").find().toArray();
-  promise.then((data) => res.send(data));
-  promise.catch((err) => res.status(500).send(err.message));
+app.get("/messages", async (req, res) => {
+  const user = req.headers.user;
+
+  const limit = parseInt(req.query.limit);
+
+  const filter = {
+    $or: [{ to: "Todos" }, { to: user }, { from: user }, { type: "message" }],
+  };
+
+  if (isNaN(limit) || limit < 0) {
+    return res.sendStatus(422);
+  }
+  if (!limit) {
+    await db
+      .collection("messages")
+      .find(filter)
+      .toArray()
+      .then((data) => res.send(data))
+      .catch((err) => res.status(500).send(err.message));
+  } else {
+    await db
+      .collection("messages")
+      .find(filter)
+      .toArray()
+      .then((data) => res.send(data.slice(-limit)))
+      .catch((err) => res.status(500).send(err.message));
+  }
 });
 const PORT = 5000;
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));

@@ -65,7 +65,7 @@ app.get("/participants", (req, res) => {
 app.post("/messages", async (req, res) => {
   const { to, text, type } = req.body;
 
-  const from = req.headers.user;
+  const from = req.headers.User;
 
   const { error } = Joi.object({
     to: Joi.string().required().min(1),
@@ -77,20 +77,11 @@ app.post("/messages", async (req, res) => {
     return res.status(422).send("erro ao enviar mensagem");
   }
 
-  const participants = await db
-    .collection("participants")
-    .findOne({ name: from });
-
-  if (!participants) {
-    return res.status(422).send("participante nao cadastrado");
-  }
-
   const newMessage = { from, to, text, type, time: dayjs().format("HH:mm:ss") };
   const promise = db.collection("messages").insertOne(newMessage);
 
   promise.then(() => res.status(201).send("Mensagem enviada!"));
   promise.catch((err) => res.status(422).send(err.message));
-  res.sendStatus(201);
 });
 
 app.get("/messages", (req, res) => {

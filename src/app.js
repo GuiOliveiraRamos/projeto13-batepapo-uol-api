@@ -101,9 +101,10 @@ app.get("/messages", async (req, res) => {
     $or: [{ to: "Todos" }, { to: user }, { from: user }, { type: "message" }],
   };
 
-  if (isNaN(limit) || limit < 0) {
+  if (isNaN(limit) || limit === 0) {
     return res.sendStatus(422);
   }
+
   if (!limit) {
     await db
       .collection("messages")
@@ -120,5 +121,24 @@ app.get("/messages", async (req, res) => {
       .catch((err) => res.status(500).send(err.message));
   }
 });
+
+app.post("/status", async (req, res) => {
+  const user = req.headers.user;
+
+  if (!user) {
+    return res.sendStatus(404);
+  }
+
+  await db
+    .collection("participants")
+    .updateOne({ name: user }, { lastStatus: Date.now() })
+    .then(() => {
+      res.sendStatus(200);
+    })
+    .catch(() => {
+      res.sendStatus(500);
+    });
+});
+
 const PORT = 5000;
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));

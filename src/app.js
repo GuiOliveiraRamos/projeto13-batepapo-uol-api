@@ -1,29 +1,48 @@
 import express from "express";
 import cors from "cors";
+import { MongoClient } from "mongodb";
+import dotenv from "dotenv";
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+dotenv.config();
 
-const participants = [];
-const messages = [];
+const mongoClient = new MongoClient(process.env.DATABASE_URL);
+let db;
+
+mongoClient
+  .connect()
+  .then(() => {
+    db = mongoClient.db();
+    console.log("rodando");
+  })
+  .catch((err) => console.log(err.message));
 
 app.post("/participants", (req, res) => {
   const { name } = req.body;
   if (!name || typeof name !== "string" || name.length === 0) {
     return res.sendStatus(422);
   }
-  if (participants.includes(name)) {
+  if (req.body.includes(name)) {
     return res.sendStatus(409);
   }
-  participants.push(name);
-  res.sendStatus(201);
+  const newParticipant = { name, lastStatus: Date.now() };
+
+  const promise = db.collection("participants").insertOne(newParticipant);
+
+  promise.then(() =>
+    res.status(201).send("Participante cadastrado com sucesso!")
+  );
 });
 
 app.get("/participants", (req, res) => {
   if (participants.length === 0) {
     res.send([]);
   }
+  const promise = db.collection("participants").find().toArray();
+  promise.then((data) => res.send(data));
+  promise.catch((err) => res.status(500).send(err.message));
 });
 
 app.post("/messages", (req, res) => {

@@ -101,7 +101,7 @@ app.get("/messages", async (req, res) => {
     $or: [{ to: "Todos" }, { to: user }, { from: user }, { type: "message" }],
   };
 
-  if (isNaN(limit) || limit === 0) {
+  if (limit === isNaN || limit === 0) {
     return res.sendStatus(422);
   }
 

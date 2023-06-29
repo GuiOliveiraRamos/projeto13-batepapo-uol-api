@@ -100,25 +100,26 @@ app.get("/messages", async (req, res) => {
   const filter = {
     $or: [{ to: "Todos" }, { to: user }, { from: user }, { type: "message" }],
   };
+  try {
+    if (limit === 0 || limit < 0 || isNaN(limit)) {
+      return res.sendStatus(422);
+    }
 
-  if (limit === isNaN || limit === 0 || limit < 0) {
-    return res.sendStatus(422);
-  }
-
-  if (!limit) {
-    await db
-      .collection("messages")
-      .find(filter)
-      .toArray()
-      .then((data) => res.send(data))
-      .catch((err) => res.status(500).send(err.message));
-  } else {
-    await db
-      .collection("messages")
-      .find(filter)
-      .toArray()
-      .then((data) => res.send(data.slice(-limit)))
-      .catch((err) => res.status(500).send(err.message));
+    if (!limit) {
+      await db
+        .collection("messages")
+        .find(filter)
+        .toArray()
+        .then((data) => res.send(data));
+    } else {
+      await db
+        .collection("messages")
+        .find(filter)
+        .toArray()
+        .then((data) => res.send(data.slice(-limit)));
+    }
+  } catch (err) {
+    res.status(500).send(err.message);
   }
 });
 

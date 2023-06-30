@@ -24,11 +24,11 @@ mongoClient
 
 app.post("/participants", async (req, res) => {
   const { name } = req.body;
-  const { error } = Joi.object({
+  const { errorSchema } = Joi.object({
     name: Joi.string().required().min(1),
-  }).validate(req.body);
+  }).validate(req.body, { abortEarly: false });
 
-  if (error) {
+  if (errorSchema) {
     return res.sendStatus(422);
   }
 
@@ -67,13 +67,13 @@ app.post("/messages", async (req, res) => {
 
   const from = req.headers.user;
 
-  const { error } = Joi.object({
+  const { errorSchema } = Joi.object({
     to: Joi.string().required().min(1),
     text: Joi.string().required().min(1),
     type: Joi.string().valid("message", "private_message").required(),
-  }).validate({ to, text, type });
+  }).validate(req.body, { abortEarly: false });
 
-  if (error) {
+  if (errorSchema) {
     return res.status(422).send("erro ao enviar mensagem");
   }
 

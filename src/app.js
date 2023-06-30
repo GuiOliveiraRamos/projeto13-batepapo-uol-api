@@ -95,16 +95,20 @@ app.post("/messages", async (req, res) => {
 app.get("/messages", async (req, res) => {
   const user = req.headers.user;
 
-  const limit = parseInt(req.query.limit);
+  const { limit } = req.query;
+
+  const limitParams = parseInt(limit);
 
   const filter = {
     $or: [{ to: "Todos" }, { to: user }, { from: user }, { type: "message" }],
   };
-  try {
-    if (limit === 0 || limit < 0 || isNaN(limit)) {
-      return res.sendStatus(422);
-    }
 
+  try {
+    if (limit) {
+      if (limitParams === 0 || limitParams < 0 || isNaN(limitParams)) {
+        return res.sendStatus(422);
+      }
+    }
     if (!limit) {
       await db
         .collection("messages")

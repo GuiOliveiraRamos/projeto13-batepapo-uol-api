@@ -25,10 +25,10 @@ mongoClient
 app.post("/participants", async (req, res) => {
   const { name } = req.body;
   const { errorSchema } = Joi.object({
-    name: Joi.string().required().min(1),
-  }).validate(req.body, { abortEarly: false });
+    name: Joi.string().required(),
+  }).validate(req.body);
 
-  if (errorSchema) {
+  if (!name || errorSchema) {
     return res.sendStatus(422);
   }
 
@@ -71,9 +71,9 @@ app.post("/messages", async (req, res) => {
     to: Joi.string().required().min(1),
     text: Joi.string().required().min(1),
     type: Joi.string().valid("message", "private_message").required(),
-  }).validate(req.body, { abortEarly: false });
+  }).validate({ to, text, type });
 
-  if (errorSchema) {
+  if (!to || !text || !type || errorSchema) {
     return res.status(422).send("erro ao enviar mensagem");
   }
 
@@ -169,7 +169,7 @@ const inactives = async () => {
       const logoutMessage = {
         from: name,
         to: "Todos",
-        text: "saiu da sala...",
+        text: "sai da sala...",
         type: "status",
         time: dayjs().format("HH:mm:ss"),
       };
@@ -180,8 +180,6 @@ const inactives = async () => {
     console.log(err);
   }
 };
-
-setInterval(inactives, 15000);
 
 setInterval(inactives, 15000);
 

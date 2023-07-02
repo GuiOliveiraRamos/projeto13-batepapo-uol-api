@@ -140,10 +140,9 @@ app.post("/status", async (req, res) => {
   try {
     await db
       .collection("participants")
-      .updateOne({ name: user }, { $set: { lastStatus: Date.now() } })
-      .then(() => {
-        res.sendStatus(200);
-      });
+      .updateOne({ name: user }, { $set: { lastStatus: Date.now() } });
+
+    res.sendStatus(200);
   } catch (err) {
     res.status(500).send(err.message);
   }
@@ -153,13 +152,36 @@ const inactives = async () => {
   const timeLimit = Date.now() - 10000;
 
   try {
-    await db
+    const expelledParticipants = await db
       .collection("participants")
-      .deleteMany({ lastStatus: { $lt: timeLimit } });
+      .find({ lastStatus: { $lt: timeLimit } })
+      .toArray();
+
+    const expelledParticipantNames = expelledParticipants.map(
+      (participant) => participant.name
+    );
+
+    await db.collection("participants").deleteMany({
+      name: { $in: expelledParticipantNames },
+    });
+
+    expelledParticipantNames.forEach(async (name) => {
+      const logoutMessage = {
+        from: name,
+        to: "Todos",
+        text: "saiu da sala...",
+        type: "status",
+        time: dayjs().format("HH:mm:ss"),
+      };
+
+      await db.collection("messages").insertOne(logoutMessage);
+    });
   } catch (err) {
-    res.sendStatus(404);
+    console.log(err);
   }
 };
+
+setInterval(inactives, 15000);
 
 setInterval(inactives, 15000);
 

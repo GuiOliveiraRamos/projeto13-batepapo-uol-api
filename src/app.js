@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import dotenv from "dotenv";
 import dayjs from "dayjs";
 import Joi from "joi";
@@ -194,6 +194,27 @@ const removeInactiveParticipants = async () => {
 };
 
 setInterval(removeInactiveParticipants, 15000);
+
+app.delete("/messages/:id", async (req, res) => {
+  const { id } = req.params;
+  const user = req.headers.user;
+  try {
+    const message = await db
+      .collection("messages")
+      .findOne({ _id: new ObjectId(id) });
+    if (!message) {
+      return res.sendStatus(404);
+    }
+
+    if (message.from !== user) {
+      return res.sendStatus(401);
+    }
+    await db.collection("messages").deleteOne({ _id: new ObjectId(id) });
+    res.sendStatus(200);
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
 
 const PORT = 5000;
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));

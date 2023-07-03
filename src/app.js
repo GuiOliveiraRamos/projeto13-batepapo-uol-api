@@ -28,20 +28,20 @@ app.post("/participants", async (req, res) => {
     name: Joi.string().required(),
   }).validate(req.body, { abortEarly: false });
 
-  if (error) {
-    return res.sendStatus(422);
-  }
+  try {
+    if (error) {
+      return res.sendStatus(422);
+    }
 
-  const participants = await db.collection("participants").findOne({ name });
+    const participants = await db.collection("participants").findOne({ name });
 
-  if (participants) {
-    return res.sendStatus(409);
-  }
-  const newParticipant = { name, lastStatus: Date.now() };
+    if (participants) {
+      return res.sendStatus(409);
+    }
+    const newParticipant = { name, lastStatus: Date.now() };
 
-  const promise = db.collection("participants").insertOne(newParticipant);
+    await db.collection("participants").insertOne(newParticipant);
 
-  promise.then(() => {
     const loginMessage = {
       from: name,
       to: "Todos",
@@ -53,7 +53,9 @@ app.post("/participants", async (req, res) => {
     db.collection("messages").insertOne(loginMessage);
 
     res.sendStatus(201);
-  });
+  } catch (err) {
+    res.status(422).send(err.message);
+  }
 });
 
 app.get("/participants", (req, res) => {
@@ -73,23 +75,32 @@ app.post("/messages", async (req, res) => {
     type: Joi.string().valid("message", "private_message").required(),
   }).validate({ to, text, type });
 
-  if (error) {
-    return res.status(422).send("erro ao enviar mensagem");
+  try {
+    if (error) {
+      return res.status(422).send("erro ao enviar mensagem");
+    }
+
+    const participant = await db
+      .collection("participants")
+      .findOne({ name: from });
+
+    if (!participant) {
+      return res.status(422).send("Não está cadastrado");
+    }
+
+    const newMessage = {
+      from,
+      to,
+      text,
+      type,
+      time: dayjs().format("HH:mm:ss"),
+    };
+    await db.collection("messages").insertOne(newMessage);
+
+    res.status(201).send("Mensagem enviada!");
+  } catch (err) {
+    res.status(422).send(err.message);
   }
-
-  const participant = await db
-    .collection("participants")
-    .findOne({ name: from });
-
-  if (!participant) {
-    return res.status(422).send("Não está cadastrado");
-  }
-
-  const newMessage = { from, to, text, type, time: dayjs().format("HH:mm:ss") };
-  const promise = db.collection("messages").insertOne(newMessage);
-
-  promise.then(() => res.status(201).send("Mensagem enviada!"));
-  promise.catch((err) => res.status(422).send(err.message));
 });
 
 app.get("/messages", async (req, res) => {
@@ -130,14 +141,15 @@ app.get("/messages", async (req, res) => {
 app.post("/status", async (req, res) => {
   const user = req.headers.user;
 
-  const participant = await db
-    .collection("participants")
-    .findOne({ name: user });
-
-  if (!participant) {
-    return res.sendStatus(404);
-  }
   try {
+    const participant = await db
+      .collection("participants")
+      .findOne({ name: user });
+
+    if (!participant) {
+      return res.sendStatus(404);
+    }
+
     await db
       .collection("participants")
       .updateOne({ name: user }, { $set: { lastStatus: Date.now() } });
@@ -148,24 +160,24 @@ app.post("/status", async (req, res) => {
   }
 });
 
-const inactives = async () => {
+const removeInactiveParticipants = async () => {
   const timeLimit = Date.now() - 10000;
 
   try {
-    const expelledParticipants = await db
+    const inactiveParticipants = await db
       .collection("participants")
       .find({ lastStatus: { $lt: timeLimit } })
       .toArray();
 
-    const expelledParticipantNames = expelledParticipants.map(
+    const inactiveParticipantNames = inactiveParticipants.map(
       (participant) => participant.name
     );
 
     await db.collection("participants").deleteMany({
-      name: { $in: expelledParticipantNames },
+      name: { $in: inactiveParticipantNames },
     });
 
-    expelledParticipantNames.forEach(async (name) => {
+    inactiveParticipantNames.forEach(async (name) => {
       const logoutMessage = {
         from: name,
         to: "Todos",
@@ -176,12 +188,12 @@ const inactives = async () => {
 
       await db.collection("messages").insertOne(logoutMessage);
     });
-  } catch (err) {
-    console.log(err);
+  } catch (error) {
+    console.log(error);
   }
 };
 
-setInterval(inactives, 15000);
+setInterval(removeInactiveParticipants, 15000);
 
 const PORT = 5000;
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));

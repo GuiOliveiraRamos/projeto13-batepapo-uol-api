@@ -160,6 +160,65 @@ app.post("/status", async (req, res) => {
   }
 });
 
+app.delete("/messages/:id", async (req, res) => {
+  const { id } = req.params;
+  const user = req.headers.user;
+  try {
+    const message = await db
+      .collection("messages")
+      .findOne({ _id: new ObjectId(id) });
+    if (!message) {
+      return res.sendStatus(404);
+    }
+
+    if (message.from !== user) {
+      return res.sendStatus(401);
+    }
+    await db.collection("messages").deleteOne({ _id: new ObjectId(id) });
+    res.sendStatus(200);
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+app.put("/messages/:id", async (req, res) => {
+  const { to, text, type } = req.body;
+  const { id } = req.params;
+  const user = req.headers.user;
+
+  const { error } = Joi.object({
+    to: Joi.string().required().min(1),
+    text: Joi.string().required().min(1),
+    type: Joi.string().valid("message", "private_message").required(),
+  }).validate({ to, text, type });
+
+  try {
+    if (error) {
+      console.log("erro aqui");
+      return res.sendStatus(422);
+    }
+    const message = await db
+      .collection("messages")
+      .findOne({ _id: new ObjectId(id) });
+
+    if (!message) {
+      return res.sendStatus(404);
+    }
+    if (message.from !== user) {
+      return res.sendStatus(401);
+    }
+
+    await db.collection("messages").updateOne(
+      { _id: new ObjectId(id) },
+      {
+        $set: { to, text, type },
+      }
+    );
+    res.status(200).send("Mensagem atualizada!");
+  } catch (err) {
+    res.status(500).send("Erro ao editar mensagem");
+  }
+});
 const removeInactiveParticipants = async () => {
   const timeLimit = Date.now() - 10000;
 
@@ -194,27 +253,6 @@ const removeInactiveParticipants = async () => {
 };
 
 setInterval(removeInactiveParticipants, 15000);
-
-app.delete("/messages/:id", async (req, res) => {
-  const { id } = req.params;
-  const user = req.headers.user;
-  try {
-    const message = await db
-      .collection("messages")
-      .findOne({ _id: new ObjectId(id) });
-    if (!message) {
-      return res.sendStatus(404);
-    }
-
-    if (message.from !== user) {
-      return res.sendStatus(401);
-    }
-    await db.collection("messages").deleteOne({ _id: new ObjectId(id) });
-    res.sendStatus(200);
-  } catch (err) {
-    res.status(500).send(err.message);
-  }
-});
 
 const PORT = 5000;
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
